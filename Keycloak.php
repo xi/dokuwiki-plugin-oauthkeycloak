@@ -36,7 +36,7 @@ class Keycloak extends AbstractOAuth2Base
      *
      * @return string
      */
-    public function getEndpoint(string $endpoint)
+    public function getDiscovery(string $endpoint, $default = '')
     {
         if (!isset($this->discovery)) {
             $plugin = plugin_load('helper', 'oauthkeycloak');
@@ -44,20 +44,20 @@ class Keycloak extends AbstractOAuth2Base
             if (!$json) throw new \Exception('Failed accessing ' . $plugin->getConf('openidurl'));
             $this->discovery = json_decode($json, true);
         }
-        if (!isset($this->discovery[$endpoint])) return '';
+        if (!isset($this->discovery[$endpoint])) return $default;
         return $this->discovery[$endpoint];
     }
 
     /** @inheritdoc */
     public function getAuthorizationEndpoint()
     {
-        return new Uri($this->getEndpoint(self::ENDPOINT_AUTH));
+        return new Uri($this->getDiscovery(self::ENDPOINT_AUTH));
     }
 
     /** @inheritdoc */
     public function getAccessTokenEndpoint()
     {
-        return new Uri($this->getEndpoint(self::ENDPOINT_TOKEN));
+        return new Uri($this->getDiscovery(self::ENDPOINT_TOKEN));
     }
 
     /** @inheritdoc */
@@ -70,6 +70,18 @@ class Keycloak extends AbstractOAuth2Base
     public function needsStateParameterInAuthUrl()
     {
         return true;
+    }
+
+    /** @inheritdoc */
+    public function getCodeChallengeMethod()
+    {
+        $supported = $this->getDiscovery('code_challenge_methods_supported', []);
+        foreach (['S256', 'plain'] as $method) {
+            if (in_array($method, $supported)) {
+                return $method;
+            }
+        }
+        return null;
     }
 
     /**
@@ -94,7 +106,7 @@ class Keycloak extends AbstractOAuth2Base
         ];
 
         $this->httpClient->retrieveResponse(
-            new Uri($this->getEndpoint(self::ENDPOINT_LOGOUT)),
+            new Uri($this->getDiscovery(self::ENDPOINT_LOGOUT)),
             $parameters,
             $this->getExtraOAuthHeaders()
         );
