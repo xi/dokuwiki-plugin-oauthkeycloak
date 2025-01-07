@@ -66,6 +66,12 @@ class Keycloak extends AbstractOAuth2Base
         return static::AUTHORIZATION_METHOD_HEADER_BEARER;
     }
 
+    /** @inheritdoc */
+    public function needsStateParameterInAuthUrl()
+    {
+        return true;
+    }
+
     /**
      * Logout from Keycloak
      *
